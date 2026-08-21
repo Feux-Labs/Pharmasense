@@ -4,6 +4,9 @@ WORKDIR /app
 
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
+# Git on Windows doesn't preserve the Unix executable bit, so mvnw can land
+# in the image without +x regardless of what's committed - set it explicitly.
+RUN chmod +x mvnw
 RUN ./mvnw -q -B dependency:go-offline
 
 COPY src/ src/
