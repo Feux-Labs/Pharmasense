@@ -1,0 +1,9 @@
+# Activated by @ActiveProfiles("test") on integration tests. Postgres/Redis
+# connection details come from Testcontainers' @ServiceConnection instead of
+# here - see TestcontainersConfiguration. This file only overrides behaviour
+# that must never hit a real external service during a test run.
+pharmasense:
+  zeptomail:
+    send-enabled: false
+  agent:
+    api-key: test-key-not-a-real-anthropic-key

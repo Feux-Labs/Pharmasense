@@ -1,0 +1,38 @@
+name: pharmasense
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: pharmasense-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pharmasense
+      POSTGRES_USER: pharmasense
+      POSTGRES_PASSWORD: pharmasense
+    ports:
+      - "5432:5432"
+    volumes:
+      - pharmasense-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharmasense -d pharmasense"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: pharmasense-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - pharmasense-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pharmasense-postgres-data:
+  pharmasense-redis-data:

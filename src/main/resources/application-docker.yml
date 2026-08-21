@@ -1,0 +1,9 @@
+# Activate with SPRING_PROFILES_ACTIVE=docker when the Spring Boot app itself
+# runs as a container inside docker-compose.yml, so it reaches Postgres/Redis
+# by service name instead of localhost.
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/pharmasense
+  data:
+    redis:
+      host: redis

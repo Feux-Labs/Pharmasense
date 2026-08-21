@@ -1,0 +1,26 @@
+# Activate with SPRING_PROFILES_ACTIVE=prod. All secrets/hosts still come
+# from environment variables (see .env.example) - this profile only changes
+# behaviour that must differ between local dev and a real deployment, e.g.
+# Neon requires SSL and Upstash Redis requires TLS.
+spring:
+  datasource:
+    url: ${DB_URL} # e.g. jdbc:postgresql://<neon-host>/pharmasense?sslmode=require
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+  data:
+    redis:
+      ssl:
+        enabled: true
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    root: WARN
+    com.pharmasense: INFO
+
+pharmasense:
+  zeptomail:
+    send-enabled: true
