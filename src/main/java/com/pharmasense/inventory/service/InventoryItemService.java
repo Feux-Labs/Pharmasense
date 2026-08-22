@@ -1,5 +1,6 @@
 package com.pharmasense.inventory.service;
 
+import com.pharmasense.billing.service.SubscriptionGuardService;
 import com.pharmasense.common.exception.ResourceNotFoundException;
 import com.pharmasense.inventory.dto.ExpiryTrackerEntryResponse;
 import com.pharmasense.inventory.dto.InventoryItemCreateRequest;
@@ -34,22 +35,26 @@ public class InventoryItemService {
     private final InventoryStatusCalculator statusCalculator;
     private final PharmacyService pharmacyService;
     private final SyncChangeRecorder syncChangeRecorder;
+    private final SubscriptionGuardService subscriptionGuardService;
 
     public InventoryItemService(
             InventoryItemRepository inventoryItemRepository,
             InventoryBatchService inventoryBatchService,
             InventoryStatusCalculator statusCalculator,
             PharmacyService pharmacyService,
-            SyncChangeRecorder syncChangeRecorder) {
+            SyncChangeRecorder syncChangeRecorder,
+            SubscriptionGuardService subscriptionGuardService) {
         this.inventoryItemRepository = inventoryItemRepository;
         this.inventoryBatchService = inventoryBatchService;
         this.statusCalculator = statusCalculator;
         this.pharmacyService = pharmacyService;
         this.syncChangeRecorder = syncChangeRecorder;
+        this.subscriptionGuardService = subscriptionGuardService;
     }
 
     @Transactional
     public InventoryItemResponse create(UUID pharmacyId, InventoryItemCreateRequest request) {
+        subscriptionGuardService.assertCanCreateInventoryItem(pharmacyId);
         InventoryItemEntity item = new InventoryItemEntity();
         item.setPharmacyId(pharmacyId);
         item.setName(request.name());

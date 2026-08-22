@@ -121,6 +121,19 @@ pharmasense:
     tenant-snapshot-cache-ttl-hours: 6
     max-push-batch-size: 500
 
+  paystack:
+    api-url: ${PAYSTACK_API_URL:https://api.paystack.co}
+    secret-key: ${PAYSTACK_SECRET_KEY:}
+    # Naira amounts in kobo (1 NGN = 100 kobo) - default: ~5,000 NGN / ~15,000 NGN.
+    basic-price-kobo: ${PAYSTACK_BASIC_PRICE_KOBO:500000}
+    pro-price-kobo: ${PAYSTACK_PRO_PRICE_KOBO:1500000}
+    callback-url: ${PAYSTACK_CALLBACK_URL:${pharmasense.frontend.base-url}/settings/billing}
+
+  billing:
+    # Comma-separated emails that get PRO with no billing enforcement,
+    # applied at signup and (for pre-existing accounts) on every startup.
+    complimentary-emails: ${BILLING_COMPLIMENTARY_EMAILS:}
+
   admin:
     impersonation-ttl-minutes: 30
     # If set and no super-admin exists yet with this email, one is created automatically on startup

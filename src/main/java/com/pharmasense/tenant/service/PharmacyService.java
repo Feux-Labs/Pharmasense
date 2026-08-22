@@ -1,5 +1,6 @@
 package com.pharmasense.tenant.service;
 
+import com.pharmasense.billing.config.BillingProperties;
 import com.pharmasense.common.exception.ResourceNotFoundException;
 import com.pharmasense.tenant.entity.PharmacyEntity;
 import com.pharmasense.tenant.enums.PharmacyPlanEnum;
@@ -20,9 +21,11 @@ public class PharmacyService {
     private static final int TRIAL_LENGTH_DAYS = 90;
 
     private final PharmacyRepository pharmacyRepository;
+    private final BillingProperties billingProperties;
 
-    public PharmacyService(PharmacyRepository pharmacyRepository) {
+    public PharmacyService(PharmacyRepository pharmacyRepository, BillingProperties billingProperties) {
         this.pharmacyRepository = pharmacyRepository;
+        this.billingProperties = billingProperties;
     }
 
     @Transactional
@@ -34,9 +37,17 @@ public class PharmacyService {
         if (currencyCode != null && !currencyCode.isBlank()) {
             pharmacy.setCurrencyCode(currencyCode.toUpperCase());
         }
-        pharmacy.setPlan(PharmacyPlanEnum.FREE_PILOT);
-        pharmacy.setSubscriptionStatus(PharmacySubscriptionStatusEnum.TRIALING);
-        pharmacy.setTrialEndsAt(Instant.now().plus(TRIAL_LENGTH_DAYS, ChronoUnit.DAYS));
+
+        if (billingProperties.complimentaryEmails().stream().anyMatch(email -> email.equalsIgnoreCase(contactEmail))) {
+            pharmacy.setPlan(PharmacyPlanEnum.PRO);
+            pharmacy.setSubscriptionStatus(PharmacySubscriptionStatusEnum.ACTIVE);
+            pharmacy.setComplimentary(true);
+        } else {
+            pharmacy.setPlan(PharmacyPlanEnum.FREE);
+            pharmacy.setSubscriptionStatus(PharmacySubscriptionStatusEnum.TRIALING);
+            pharmacy.setTrialEndsAt(Instant.now().plus(TRIAL_LENGTH_DAYS, ChronoUnit.DAYS));
+        }
+
         return pharmacyRepository.save(pharmacy);
     }
 

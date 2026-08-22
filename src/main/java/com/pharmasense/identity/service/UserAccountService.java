@@ -1,5 +1,6 @@
 package com.pharmasense.identity.service;
 
+import com.pharmasense.billing.service.SubscriptionGuardService;
 import com.pharmasense.common.exception.ConflictException;
 import com.pharmasense.common.exception.ResourceNotFoundException;
 import com.pharmasense.identity.entity.UserAccountEntity;
@@ -19,9 +20,11 @@ import java.util.UUID;
 public class UserAccountService {
 
     private final UserAccountRepository userAccountRepository;
+    private final SubscriptionGuardService subscriptionGuardService;
 
-    public UserAccountService(UserAccountRepository userAccountRepository) {
+    public UserAccountService(UserAccountRepository userAccountRepository, SubscriptionGuardService subscriptionGuardService) {
         this.userAccountRepository = userAccountRepository;
+        this.subscriptionGuardService = subscriptionGuardService;
     }
 
     @Transactional
@@ -60,6 +63,7 @@ public class UserAccountService {
 
     @Transactional
     public UserAccountEntity inviteStaffMember(UUID pharmacyId, String email, String fullName, UserRoleEnum role) {
+        subscriptionGuardService.assertCanInviteStaff(pharmacyId);
         if (role == UserRoleEnum.SUPER_ADMIN) {
             throw new ConflictException("Cannot assign the platform admin role to a pharmacy staff member");
         }

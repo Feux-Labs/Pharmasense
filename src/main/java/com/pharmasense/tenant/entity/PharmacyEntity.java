@@ -51,7 +51,7 @@ public class PharmacyEntity extends AuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private PharmacyPlanEnum plan = PharmacyPlanEnum.FREE_PILOT;
+    private PharmacyPlanEnum plan = PharmacyPlanEnum.FREE;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "subscription_status", nullable = false, length = 32)
@@ -59,6 +59,18 @@ public class PharmacyEntity extends AuditableEntity {
 
     @Column(name = "trial_ends_at")
     private Instant trialEndsAt;
+
+    /** When a paid plan's current 30-day period ends; null on the FREE plan. */
+    @Column(name = "current_period_ends_at")
+    private Instant currentPeriodEndsAt;
+
+    /**
+     * A complimentary account never has its plan limits enforced and never
+     * auto-downgrades when {@code currentPeriodEndsAt} passes, regardless of
+     * {@code plan} - see {@link com.pharmasense.billing.service.SubscriptionGuardService}.
+     */
+    @Column(nullable = false)
+    private boolean complimentary = false;
 
     @Column(name = "low_stock_threshold_default", nullable = false)
     private int lowStockThresholdDefault = 10;

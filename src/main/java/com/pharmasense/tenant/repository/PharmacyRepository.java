@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PharmacyRepository extends JpaRepository<PharmacyEntity, UUID> {
@@ -13,6 +14,8 @@ public interface PharmacyRepository extends JpaRepository<PharmacyEntity, UUID> 
     Page<PharmacyEntity> findAll(Pageable pageable);
 
     boolean existsByContactEmailIgnoreCase(String contactEmail);
+
+    Optional<PharmacyEntity> findByContactEmailIgnoreCase(String contactEmail);
 
     long countBySubscriptionStatus(PharmacySubscriptionStatusEnum subscriptionStatus);
 }

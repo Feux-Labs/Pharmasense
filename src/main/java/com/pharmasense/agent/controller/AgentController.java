@@ -4,6 +4,7 @@ import com.pharmasense.agent.dto.AgentChatRequest;
 import com.pharmasense.agent.dto.AgentChatResponse;
 import com.pharmasense.agent.service.AgentConversationService;
 import com.pharmasense.agent.tool.AgentToolContext;
+import com.pharmasense.billing.service.SubscriptionGuardService;
 import com.pharmasense.common.response.ApiResponse;
 import com.pharmasense.identity.security.PharmasenseUserPrincipal;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,15 +23,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgentController {
 
     private final AgentConversationService agentConversationService;
+    private final SubscriptionGuardService subscriptionGuardService;
 
-    public AgentController(AgentConversationService agentConversationService) {
+    public AgentController(AgentConversationService agentConversationService, SubscriptionGuardService subscriptionGuardService) {
         this.agentConversationService = agentConversationService;
+        this.subscriptionGuardService = subscriptionGuardService;
     }
 
     @PostMapping("/chat")
     @PreAuthorize("@rbacEvaluator.hasPermission(authentication, 'AGENT_USE')")
     public ApiResponse<AgentChatResponse> chat(
             @AuthenticationPrincipal PharmasenseUserPrincipal principal, @Valid @RequestBody AgentChatRequest request) {
+        subscriptionGuardService.assertCanUseAgentAndRecordUsage(principal.pharmacyId());
         AgentToolContext context = new AgentToolContext(principal.pharmacyId(), principal.userId(), principal.role());
         return ApiResponse.ok(agentConversationService.chat(context, request));
     }
