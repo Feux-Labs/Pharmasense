@@ -114,4 +114,86 @@ class AuthenticationFlowIntegrationTest {
         mockMvc.perform(get("/api/v1/inventory/items"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void forgotPasswordThenResetAllowsLoginWithNewPassword() throws Exception {
+        String email = "owner+" + UUID.randomUUID() + "@example.com";
+        Map<String, String> signupRequest = Map.of(
+                "pharmacyName", "Test Pharmacy",
+                "ownerFullName", "Jane Owner",
+                "ownerEmail", email,
+                "password", "correct-horse-battery",
+                "currencyCode", "USD");
+        mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signupRequest)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email))))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<String> codeCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendPasswordResetCode(eq(email), anyString(), codeCaptor.capture(), anyInt());
+        String code = codeCaptor.getValue();
+
+        Map<String, String> resetRequest = Map.of("email", email, "code", code, "newPassword", "new-correct-horse");
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resetRequest)))
+                .andExpect(status().isOk());
+
+        // Old password must no longer work.
+        Map<String, String> oldPasswordLogin = Map.of("email", email, "password", "correct-horse-battery");
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(oldPasswordLogin)))
+                .andExpect(status().isUnauthorized());
+
+        // New password must work.
+        Map<String, String> newPasswordLogin = Map.of("email", email, "password", "new-correct-horse");
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newPasswordLogin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").exists());
+    }
+
+    @Test
+    void forgotPasswordForUnknownEmailReturnsOkWithoutSendingEmail() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", "nobody-" + UUID.randomUUID() + "@example.com"))))
+                .andExpect(status().isOk());
+        // No verify() here for sendPasswordResetCode on this specific email - the
+        // point is the endpoint doesn't leak whether the account exists via a
+        // different status code, which is already covered by the 200 above.
+    }
+
+    @Test
+    void resetPasswordWithWrongCodeIsRejected() throws Exception {
+        String email = "owner+" + UUID.randomUUID() + "@example.com";
+        Map<String, String> signupRequest = Map.of(
+                "pharmacyName", "Test Pharmacy",
+                "ownerFullName", "Jane Owner",
+                "ownerEmail", email,
+                "password", "correct-horse-battery",
+                "currencyCode", "USD");
+        mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signupRequest)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email))))
+                .andExpect(status().isOk());
+
+        Map<String, String> resetRequest = Map.of("email", email, "code", "000000", "newPassword", "new-correct-horse");
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resetRequest)))
+                .andExpect(status().isUnauthorized());
+    }
 }

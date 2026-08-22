@@ -3,6 +3,7 @@ package com.pharmasense.identity.service;
 import com.pharmasense.common.exception.ApiException;
 import com.pharmasense.common.exception.ErrorCode;
 import com.pharmasense.identity.config.OtpProperties;
+import com.pharmasense.identity.enums.OtpPurpose;
 import com.pharmasense.identity.security.TokenHasher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,41 +66,56 @@ class OtpServiceTest {
 
     @Test
     void correctCodeVerifiesSuccessfully() {
-        String code = otpService.generateAndStore("owner@example.com");
-        otpService.verify("owner@example.com", code);
+        String code = otpService.generateAndStore("owner@example.com", OtpPurpose.LOGIN);
+        otpService.verify("owner@example.com", code, OtpPurpose.LOGIN);
         // no exception means success; code should be single-use now
-        assertThatThrownBy(() -> otpService.verify("owner@example.com", code))
+        assertThatThrownBy(() -> otpService.verify("owner@example.com", code, OtpPurpose.LOGIN))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> assertThat(((ApiException) ex).getErrorCode()).isEqualTo(ErrorCode.OTP_INVALID_OR_EXPIRED));
     }
 
     @Test
     void incorrectCodeIsRejected() {
-        otpService.generateAndStore("owner@example.com");
-        assertThatThrownBy(() -> otpService.verify("owner@example.com", "000000"))
+        otpService.generateAndStore("owner@example.com", OtpPurpose.LOGIN);
+        assertThatThrownBy(() -> otpService.verify("owner@example.com", "000000", OtpPurpose.LOGIN))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> assertThat(((ApiException) ex).getErrorCode()).isEqualTo(ErrorCode.OTP_INVALID_OR_EXPIRED));
     }
 
     @Test
     void verifyingWithNoCodeRequestedIsRejected() {
-        assertThatThrownBy(() -> otpService.verify("nobody@example.com", "123456"))
+        assertThatThrownBy(() -> otpService.verify("nobody@example.com", "123456", OtpPurpose.LOGIN))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> assertThat(((ApiException) ex).getErrorCode()).isEqualTo(ErrorCode.OTP_INVALID_OR_EXPIRED));
     }
 
     @Test
     void requestingASecondCodeBeforeCooldownExpiresIsRateLimited() {
-        otpService.generateAndStore("owner@example.com");
-        assertThatThrownBy(() -> otpService.generateAndStore("owner@example.com"))
+        otpService.generateAndStore("owner@example.com", OtpPurpose.LOGIN);
+        assertThatThrownBy(() -> otpService.generateAndStore("owner@example.com", OtpPurpose.LOGIN))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> assertThat(((ApiException) ex).getErrorCode()).isEqualTo(ErrorCode.OTP_RATE_LIMITED));
     }
 
     @Test
     void generatedCodeHasConfiguredLength() {
-        String code = otpService.generateAndStore("owner@example.com");
+        String code = otpService.generateAndStore("owner@example.com", OtpPurpose.LOGIN);
         assertThat(code).hasSize(otpProperties.length());
         assertThat(code).matches("\\d+");
+    }
+
+    @Test
+    void codeIsScopedToItsPurposeAndCannotBeUsedForAnother() {
+        String code = otpService.generateAndStore("owner@example.com", OtpPurpose.LOGIN);
+        assertThatThrownBy(() -> otpService.verify("owner@example.com", code, OtpPurpose.PASSWORD_RESET))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getErrorCode()).isEqualTo(ErrorCode.OTP_INVALID_OR_EXPIRED));
+    }
+
+    @Test
+    void loginAndPasswordResetCooldownsAreIndependent() {
+        otpService.generateAndStore("owner@example.com", OtpPurpose.LOGIN);
+        // Should not throw - a pending LOGIN cooldown must not block PASSWORD_RESET.
+        otpService.generateAndStore("owner@example.com", OtpPurpose.PASSWORD_RESET);
     }
 }

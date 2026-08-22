@@ -26,6 +26,20 @@ public class EmailService {
         zeptoMailClient.sendEmail(toEmail, recipientName, subject, html);
     }
 
+    public void sendPasswordResetCode(String toEmail, String recipientName, String code, int ttlMinutes) {
+        String subject = "Reset your Pharmasense password";
+        String html = """
+                <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px">
+                  <h2 style="margin-bottom:4px">Pharmasense</h2>
+                  <p>Hi %s,</p>
+                  <p>Use this code to reset your password:</p>
+                  <p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">%s</p>
+                  <p>This code expires in %d minutes. If you didn't request this, you can safely ignore this email — your password won't change.</p>
+                </div>
+                """.formatted(recipientName, code, ttlMinutes);
+        zeptoMailClient.sendEmail(toEmail, recipientName, subject, html);
+    }
+
     public void sendStaffInvite(String toEmail, String recipientName, String pharmacyName, String inviteUrl) {
         String subject = "You've been invited to join " + pharmacyName + " on Pharmasense";
         String html = """

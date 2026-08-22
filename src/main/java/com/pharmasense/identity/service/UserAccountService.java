@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -105,6 +106,10 @@ public class UserAccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", email));
     }
 
+    public Optional<UserAccountEntity> findByEmailOrNull(String email) {
+        return userAccountRepository.findByEmailIgnoreCase(email);
+    }
+
     public List<UserAccountEntity> listStaffForPharmacy(UUID pharmacyId) {
         return userAccountRepository.findByPharmacyId(pharmacyId);
     }
@@ -121,5 +126,12 @@ public class UserAccountService {
     @Transactional
     public UserAccountEntity save(UserAccountEntity user) {
         return userAccountRepository.save(user);
+    }
+
+    @Transactional
+    public void updatePasswordHash(UUID userId, String newPasswordHash) {
+        UserAccountEntity user = getById(userId);
+        user.setPasswordHash(newPasswordHash);
+        userAccountRepository.save(user);
     }
 }

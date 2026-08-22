@@ -3,11 +3,13 @@ package com.pharmasense.identity.controller;
 import com.pharmasense.common.response.ApiResponse;
 import com.pharmasense.identity.dto.AuthResponse;
 import com.pharmasense.identity.dto.CompletePharmacySetupRequest;
+import com.pharmasense.identity.dto.ForgotPasswordRequest;
 import com.pharmasense.identity.dto.LoginRequest;
 import com.pharmasense.identity.dto.OtpRequestDto;
 import com.pharmasense.identity.dto.OtpVerifyRequest;
 import com.pharmasense.identity.dto.RefreshTokenRequest;
 import com.pharmasense.identity.dto.RegisterPharmacyRequest;
+import com.pharmasense.identity.dto.ResetPasswordRequest;
 import com.pharmasense.identity.security.PharmasenseUserPrincipal;
 import com.pharmasense.identity.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -63,6 +65,18 @@ public class AuthController {
         AuthResponse authResponse = authenticationService.verifyOtpAndIssueTokens(
                 request.email(), request.code(), request.deviceLabel());
         return ApiResponse.ok(authResponse);
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authenticationService.sendPasswordResetCode(request.email());
+        return ApiResponse.ok(null, "If an account exists for this email, a reset code has been sent.");
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authenticationService.resetPassword(request.email(), request.code(), request.newPassword());
+        return ApiResponse.ok(null, "Password reset. Please sign in with your new password.");
     }
 
     @PostMapping("/refresh")

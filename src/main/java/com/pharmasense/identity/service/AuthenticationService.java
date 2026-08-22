@@ -5,6 +5,7 @@ import com.pharmasense.common.exception.ErrorCode;
 import com.pharmasense.identity.dto.AuthResponse;
 import com.pharmasense.identity.dto.UserResponse;
 import com.pharmasense.identity.entity.UserAccountEntity;
+import com.pharmasense.identity.enums.OtpPurpose;
 import com.pharmasense.identity.mapper.UserAccountMapper;
 import com.pharmasense.identity.security.JwtService;
 import com.pharmasense.notification.service.EmailService;
@@ -80,16 +81,38 @@ public class AuthenticationService {
 
     public void sendOtpCode(String email) {
         UserAccountEntity user = userAccountService.getByEmail(email);
-        String code = otpService.generateAndStore(email);
+        String code = otpService.generateAndStore(email, OtpPurpose.LOGIN);
         emailService.sendOtpCode(email, user.getFullName(), code, otpProperties.ttlMinutes());
     }
 
     @Transactional
     public AuthResponse verifyOtpAndIssueTokens(String email, String code, String deviceLabel) {
-        otpService.verify(email, code);
+        otpService.verify(email, code, OtpPurpose.LOGIN);
         UserAccountEntity user = userAccountService.getByEmail(email);
         userAccountService.markLoggedIn(user);
         return buildAuthResponse(user, deviceLabel);
+    }
+
+    /**
+     * Silently no-ops for an unknown email so this can't be used to enumerate
+     * registered accounts - the controller always returns the same generic
+     * message regardless of whether a code was actually sent.
+     */
+    public void sendPasswordResetCode(String email) {
+        userAccountService.findByEmailOrNull(email).ifPresent(user -> {
+            String code = otpService.generateAndStore(email, OtpPurpose.PASSWORD_RESET);
+            emailService.sendPasswordResetCode(email, user.getFullName(), code, otpProperties.ttlMinutes());
+        });
+    }
+
+    @Transactional
+    public void resetPassword(String email, String code, String newPassword) {
+        otpService.verify(email, code, OtpPurpose.PASSWORD_RESET);
+        UserAccountEntity user = userAccountService.getByEmail(email);
+        userAccountService.updatePasswordHash(user.getId(), passwordEncoder.encode(newPassword));
+        // A password reset means the old one may have been compromised -
+        // force every existing session to re-authenticate with the new one.
+        refreshTokenService.revokeAllForUser(user.getId());
     }
 
     @Transactional

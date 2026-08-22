@@ -3,6 +3,7 @@ package com.pharmasense.identity.service;
 import com.pharmasense.common.exception.ApiException;
 import com.pharmasense.common.exception.ErrorCode;
 import com.pharmasense.identity.config.OtpProperties;
+import com.pharmasense.identity.enums.OtpPurpose;
 import com.pharmasense.identity.security.TokenHasher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -33,23 +34,25 @@ public class OtpService {
         this.otpProperties = otpProperties;
     }
 
-    public String generateAndStore(String email) {
-        String cooldownKey = COOLDOWN_KEY_PREFIX + email.toLowerCase();
+    public String generateAndStore(String email, OtpPurpose purpose) {
+        String cooldownKey = COOLDOWN_KEY_PREFIX + purpose.name() + ":" + email.toLowerCase();
         if (Boolean.TRUE.equals(redisTemplate.hasKey(cooldownKey))) {
             throw new ApiException(ErrorCode.OTP_RATE_LIMITED,
                     "Please wait before requesting another code");
         }
 
         String code = generateNumericCode(otpProperties.length());
-        String otpKey = OTP_KEY_PREFIX + email.toLowerCase();
+        String otpKey = OTP_KEY_PREFIX + purpose.name() + ":" + email.toLowerCase();
         redisTemplate.opsForValue().set(otpKey, tokenHasher.sha256(code) + ":0", Duration.ofMinutes(otpProperties.ttlMinutes()));
         redisTemplate.opsForValue().set(cooldownKey, "1", Duration.ofSeconds(otpProperties.resendCooldownSeconds()));
         return code;
     }
 
-    /** @throws ApiException with {@code OTP_INVALID_OR_EXPIRED} if the code is wrong, expired, or attempts are exhausted */
-    public void verify(String email, String submittedCode) {
-        String otpKey = OTP_KEY_PREFIX + email.toLowerCase();
+    /**
+     * @throws ApiException with {@code OTP_INVALID_OR_EXPIRED} if the code is wrong, expired, or attempts are exhausted
+     */
+    public void verify(String email, String submittedCode, OtpPurpose purpose) {
+        String otpKey = OTP_KEY_PREFIX + purpose.name() + ":" + email.toLowerCase();
         String stored = redisTemplate.opsForValue().get(otpKey);
         if (stored == null) {
             throw new ApiException(ErrorCode.OTP_INVALID_OR_EXPIRED, "Code has expired. Please request a new one.");
